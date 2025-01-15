@@ -1,0 +1,8 @@
+# weather_risks
+
+## Development
+
+```sh
+gleam run   # Run the project
+gleam test  # Run the tests
+```

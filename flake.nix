@@ -19,7 +19,8 @@
         buildInputs = with pkgs; [
           erlang
           gleam
-          rebar3
+          # for lustre devtools
+          inotify-tools
         ];
       };
     });

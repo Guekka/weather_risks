@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [project.scripts]
-weather_risks = "weather_risks:main"
+weather_risks = "weather_risks.__main__:main"
 
 [build-system]
 requires = ["hatchling"]

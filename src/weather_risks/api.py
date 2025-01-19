@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 
-import requests
-import openmeteo_requests
 from requests_cache import CachedSession
 from retry_requests import retry
 
@@ -28,9 +26,9 @@ class DailyPrecipitationAmounts:
     year: int
 
 
-def geocode( searched_place: str) -> list[Location]:
+def geocode(searched_place: str) -> list[Location]:
     params = {
-        "name": searched_place,
+        "name": searched_place.lower(),  # for better caching
     }
 
     api_res = retry_session.get(GEOCODING_ENDPOINT, params=params).json()
@@ -45,8 +43,9 @@ def geocode( searched_place: str) -> list[Location]:
         for location in api_res["results"]
     ]
 
+
 def get_precipitation_amounts(lat: float, lon: float, year: int
-):
+                              ):
     params = {
         "latitude": lat,
         "longitude": lon,
@@ -56,7 +55,6 @@ def get_precipitation_amounts(lat: float, lon: float, year: int
     }
 
     api_res = retry_session.get(ARCHIVE_ENDPOINT, params=params).json()
-    print(api_res)
     return DailyPrecipitationAmounts(
         days=api_res["daily"]["time"],
         values=api_res["daily"]["precipitation_sum"],

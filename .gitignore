@@ -177,3 +177,4 @@ pyrightconfig.json
 
 # requests-cache
 .cache.sqlite 
+.DS_Store

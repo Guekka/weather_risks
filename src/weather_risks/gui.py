@@ -3,6 +3,7 @@ from datetime import datetime
 from nicegui import ui
 
 from weather_risks.api import geocode, get_precipitation_amounts
+from weather_risks.pricing import PricingParameters, price_insurance_yearly_premium
 
 
 class WeatherApp:
@@ -16,13 +17,18 @@ class WeatherApp:
         self.location_input = None
         self.search_button = None
         self.year_input = None
+        self.pivot_input = None
+        self.turnover_input = None
+        self.fixed_costs_input = None
+        self.calculate_button = None
 
         self.build_ui()
 
     def build_ui(self):
         self.main_card = ui.card().classes('w-full mx-auto mt-8')
         with self.main_card:
-            ui.label('Weather Data Viewer').classes('text-2xl mb-4')
+            # Section 1: Recherche de la localisation
+            ui.label('Weather Data Viewer & Insurance Calculator').classes('text-2xl mb-4')
 
             self.location_input = ui.input(
                 label='Enter a location', placeholder='E.g., Paris, Tokyo'
@@ -39,10 +45,23 @@ class WeatherApp:
                 label='Enter a Year', value=self.prev_year, min=1980, max=self.prev_year
             ).classes('mb-2')
 
-            self.fetch_button = ui.button('Get Precipitation Data')
+            self.fetch_button = ui.button('Get Data & Update Chart')
             self.fetch_button.disable()
-            self.fetch_button.on('click', self.fetch_precipitation_data)
+            self.fetch_button.on('click', self.fetch_data)
 
+            # Section 2: Paramètres pour le calcul de la prime
+            ui.separator()
+            ui.label('Insurance Pricing Parameters').classes('text-xl mb-4')
+
+            self.pivot_input = ui.number(label='Pivot Precipitation Amount (mm)').classes('mb-2')
+            self.turnover_input = ui.number(label='Max Daily Turnover (€)').classes('mb-2')
+            self.fixed_costs_input = ui.number(label='Fixed Daily Costs (€)').classes('mb-2')
+
+            self.calculate_button = ui.button('Calculate Yearly Premium')
+            self.calculate_button.on('click', self.calculate_premium)
+
+            # Section 3: Graphique
+            ui.separator()
             self.chart_area = ui.echart({
                 "title": {"text": "No Data Available"},
                 "xAxis": {"categories": []},
@@ -73,7 +92,7 @@ class WeatherApp:
         finally:
             self.search_button.enable()
 
-    def fetch_precipitation_data(self):
+    def fetch_data(self):
         if not self.selected_location or not self.location_dropdown.value:
             ui.notify('Please select a location', color='red')
             return
@@ -85,15 +104,18 @@ class WeatherApp:
 
             data = get_precipitation_amounts(loc.latitude, loc.longitude, year)
 
-            # Update the chart with new data
+            # Mise à jour du graphique
             self.update_chart(loc.name, year, data.days, data.values)
+
+            # Stocker les données pour le calcul de la prime
+            self.current_precipitation_data = data
+            self.current_location = loc
+
+            ui.notify(f'Data loaded for {loc.name} ({year}).', color='green')
         except Exception as e:
             ui.notify(f'Error: {e}', color='red')
 
     def update_chart(self, location_name, year, days, values):
-        # the documentation states that data can be changed by changing the options property,
-        # but options is a read-only property so we have to use _props instead
-        # noinspection PyProtectedMember
         self.chart_area._props['options'] = {
             "title": {"text": f"Daily Precipitation for {location_name} ({year})"},
             "xAxis": {"type": "category", "data": days},
@@ -111,8 +133,30 @@ class WeatherApp:
         self.chart_area.update()
         self.main_card.update()
 
+    def calculate_premium(self):
+        if not hasattr(self, 'current_precipitation_data') or not hasattr(self, 'current_location'):
+            ui.notify('Please fetch weather data first.', color='red')
+            return
+
+        try:
+            # Construire les paramètres pour la prime
+            parameters = PricingParameters(
+                pivot_precipitation_amount=self.pivot_input.value,
+                max_daily_turnover=self.turnover_input.value,
+                fixed_daily_costs=self.fixed_costs_input.value,
+                subscription_date=f"{self.year_input.value}-01-01",
+                city=self.current_location.name,
+            )
+
+            # Calculer la prime
+            premium = price_insurance_yearly_premium(parameters)
+
+            # Afficher le résultat
+            ui.notify(f'Calculated Yearly Premium: €{premium:.2f}', color='green')
+        except Exception as e:
+            ui.notify(f'Error: {e}', color='red')
+
 
 def main():
     WeatherApp()
     ui.run()
-

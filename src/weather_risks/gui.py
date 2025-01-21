@@ -158,13 +158,13 @@ class WeatherApp:
             pricing_details = price_insurance_yearly_premium(parameters)
 
             # Afficher les résultats détaillés
-            self.show_results(pricing_details)
+            self.display_results(pricing_details)
 
             ui.notify(f'Calculated Yearly Premium: €{pricing_details.yearly_premium:.2f}', color='green')
         except Exception as e:
             ui.notify(f'Error: {e}', color='red')
 
-    def show_results(self, pricing_details):
+    def display_results(self, pricing_details):
         self.results_area.clear()
 
         with self.results_area:
@@ -172,14 +172,24 @@ class WeatherApp:
             ui.label(f"Yearly Premium (with Margin): €{pricing_details.yearly_premium:.2f}").classes('mb-2')
 
             ui.label("Daily Turnover and Results:").classes('text-lg mt-4')
-            with ui.table():
-                ui.table_head(['Day', 'Daily Turnover (€)', 'Daily Result (€)'])
+
+            # Créer les colonnes et lignes pour le tableau
+            columns = [
+                {"header": "Day", "field": "day"},
+                {"header": "Daily Turnover (€)", "field": "turnover"},
+                {"header": "Daily Result (€)", "field": "result"},
+            ]
+            rows = [
+                {"day": str(day), "turnover": f"{ca:.2f}", "result": f"{result:.2f}"}
                 for day, ca, result in zip(
                     range(1, len(pricing_details.daily_ca) + 1),
                     pricing_details.daily_ca,
                     pricing_details.daily_results
-                ):
-                    ui.table_row([day, f"{ca:.2f}", f"{result:.2f}"])
+                )
+            ]
+
+            # Créer un tableau dynamique avec pagination
+            ui.table(columns=columns, rows=rows).classes('w-full mt-4')
 
 
 def main():

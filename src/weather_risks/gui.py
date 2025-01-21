@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from nicegui import ui
-
 from weather_risks.api import geocode, get_precipitation_amounts
 from weather_risks.pricing import PricingParameters, price_insurance_yearly_premium
 
@@ -21,6 +20,7 @@ class WeatherApp:
         self.turnover_input = None
         self.fixed_costs_input = None
         self.calculate_button = None
+        self.results_area = None
 
         self.build_ui()
 
@@ -60,7 +60,13 @@ class WeatherApp:
             self.calculate_button = ui.button('Calculate Yearly Premium')
             self.calculate_button.on('click', self.calculate_premium)
 
-            # Section 3: Graphique
+            # Section 3: Résultats détaillés
+            ui.separator()
+            ui.label('Detailed Results').classes('text-xl mb-4')
+
+            self.results_area = ui.card().classes('w-full mb-4')
+
+            # Section 4: Graphique
             ui.separator()
             self.chart_area = ui.echart({
                 "title": {"text": "No Data Available"},
@@ -145,18 +151,37 @@ class WeatherApp:
                 max_daily_turnover=self.turnover_input.value,
                 fixed_daily_costs=self.fixed_costs_input.value,
                 subscription_date=f"{self.year_input.value}-01-01",
-                city=self.current_location.name,
+                location=self.current_location
             )
 
-            # Calculer la prime
-            premium = price_insurance_yearly_premium(parameters)
+            # Calculer la prime et récupérer les détails
+            pricing_details = price_insurance_yearly_premium(parameters)
 
-            # Afficher le résultat
-            ui.notify(f'Calculated Yearly Premium: €{premium:.2f}', color='green')
+            # Afficher les résultats détaillés
+            self.show_results(pricing_details)
+
+            ui.notify(f'Calculated Yearly Premium: €{pricing_details.yearly_premium:.2f}', color='green')
         except Exception as e:
             ui.notify(f'Error: {e}', color='red')
+
+    def show_results(self, pricing_details):
+        self.results_area.clear()
+
+        with self.results_area:
+            ui.label(f"Total Losses: €{pricing_details.total_losses:.2f}").classes('mb-2')
+            ui.label(f"Yearly Premium (with Margin): €{pricing_details.yearly_premium:.2f}").classes('mb-2')
+
+            ui.label("Daily Turnover and Results:").classes('text-lg mt-4')
+            with ui.table():
+                ui.table_head(['Day', 'Daily Turnover (€)', 'Daily Result (€)'])
+                for day, ca, result in zip(
+                    range(1, len(pricing_details.daily_ca) + 1),
+                    pricing_details.daily_ca,
+                    pricing_details.daily_results
+                ):
+                    ui.table_row([day, f"{ca:.2f}", f"{result:.2f}"])
 
 
 def main():
     WeatherApp()
-    ui.run()
+    ui.run(reload=False)

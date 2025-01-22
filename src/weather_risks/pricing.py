@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from weather_risks.api import Location, geocode, get_precipitation_amounts
+from weather_risks.api import Location, get_precipitation_amounts
 
 @dataclass
 class PricingParameters:
